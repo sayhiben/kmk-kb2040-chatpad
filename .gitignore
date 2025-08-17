@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# CircuitPython compiled files
+*.mpy
+
+# CircuitPython device files (created when device is mounted)
+.Trashes
+.metadata_never_index
+.fseventsd/
+boot_out.txt
+System Volume Information/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Editors
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+.netrwhist
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+.claude/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation build
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# Logs
+*.log
+logs/
+
+# The symlink to KMK is tracked, but not the submodule contents
+# (handled by git submodule)
