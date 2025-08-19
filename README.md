@@ -300,7 +300,6 @@ kmk-kb2040-chatpad/
 │   │   └── vim.py
 │   └── kmk/            # KMK firmware (git submodule)
 └── docs/               # Documentation
-    ├── arduino/        # Original Arduino implementation
     └── kmk-reference/  # KMK documentation
 ```
 
