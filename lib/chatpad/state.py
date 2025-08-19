@@ -92,3 +92,37 @@ class SpaceKeyState:
             self.ctrl_active = True
             return True
         return False
+
+
+class DualRoleKeyState:
+    """Generic dual-role key: tap for one action, hold for modifier."""
+    def __init__(self, tap_timeout=0.200):
+        self.is_down = False
+        self.down_at = 0.0
+        self.mod_active = False
+        self.tap_timeout = tap_timeout
+
+    def press(self):
+        self.is_down = True
+        self.down_at = monotonic()
+        self.mod_active = False
+
+    def release(self):
+        was_mod = self.mod_active
+        was_tap = self.is_down and not self.mod_active
+        self.is_down = False
+        self.mod_active = False
+        return was_tap, was_mod
+
+    def promote_by_time(self):
+        if self.is_down and not self.mod_active:
+            if monotonic() - self.down_at > self.tap_timeout:
+                self.mod_active = True
+                return True
+        return False
+
+    def promote_by_chord(self):
+        if self.is_down and not self.mod_active:
+            self.mod_active = True
+            return True
+        return False

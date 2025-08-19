@@ -11,6 +11,9 @@ venv/
 # CircuitPython compiled files
 *.mpy
 
+# CircuitPython UF2 files
+*.uf2
+
 # CircuitPython device files (created when device is mounted)
 .Trashes
 .metadata_never_index

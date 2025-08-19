@@ -24,24 +24,24 @@ class FrameParser:
         while len(self.buffer) >= Protocol.FRAME_SIZE:
             # skip status frames
             if self.buffer[0] == Protocol.STATUS_HEADER:
-                del self.buffer[:Protocol.FRAME_SIZE]
+                self.buffer = self.buffer[Protocol.FRAME_SIZE:]
                 continue
             # look for data header
             if self.buffer[0] == Protocol.DATA_HEADER:
                 if len(self.buffer) < Protocol.FRAME_SIZE:
                     return None
                 if self.buffer[1] != Protocol.HEADER2:
-                    del self.buffer[:1]
+                    self.buffer = self.buffer[1:]
                     continue
                 frame = bytes(self.buffer[:Protocol.FRAME_SIZE])
                 if self._checksum_ok(frame):
-                    del self.buffer[:Protocol.FRAME_SIZE]
+                    self.buffer = self.buffer[Protocol.FRAME_SIZE:]
                     return frame
                 # bad checksum, resync by one byte
-                del self.buffer[:1]
+                self.buffer = self.buffer[1:]
                 continue
             # unknown, drop a byte
-            del self.buffer[:1]
+            self.buffer = self.buffer[1:]
         return None
 
     @staticmethod
@@ -73,8 +73,12 @@ class UARTHandler:
         iw = getattr(self.uart, "in_waiting", 0)
         if iw:
             data = self.uart.read(iw)
+            # Debug: Enable to see raw UART data
+            # print(f"UART RX ({len(data)} bytes): {' '.join(hex(b) for b in data)}")
             self.parser.add_data(data)
         frame = self.parser.get_frame()
         if not frame:
             return None
+        # Debug: Enable to see parsed frames
+        # print(f"Frame: {' '.join(hex(b) for b in frame)}")
         return {"modifiers": frame[3], "key0": frame[4], "key1": frame[5]}

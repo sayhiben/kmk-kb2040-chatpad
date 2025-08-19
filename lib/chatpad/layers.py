@@ -1,13 +1,20 @@
 """Layer selection and key mappings."""
-from kmk.keys import KC
 from config import Keys, Modifiers, HOST_OS
 
 class LayerManager:
     def __init__(self, macros):
         self.macros = macros
-        self._build_layers()
+        self.layers = {}
+        self._layers_built = False
+        # Don't build layers yet - KC.MACRO won't exist until Macros module is loaded
 
     def _build_layers(self):
+        # Only build once
+        if self._layers_built:
+            return
+        
+        from kmk.keys import KC
+        
         # Base typing layer
         base = {}
         # Letters
@@ -33,27 +40,31 @@ class LayerManager:
         # Green: coding symbols and helpers (pair insertion via macros)
         # Pair‑insertion macros are in macros dict: pair_paren, pair_brace, pair_bracket, pair_angle, pair_squote, pair_dquote
         green = {
-            Keys.D.code: self.macros["pair_bracket"],
-            Keys.F.code: self.macros["pair_brace"],
-            Keys.R.code: self.macros["pair_paren"],
-            Keys.C.code: self.macros["pair_angle"],
-            Keys.COMMA.code: self.macros["pair_squote"],
-            Keys.PERIOD.code: self.macros["pair_dquote"],
+            Keys.D.code: KC.MACRO(self.macros["pair_bracket"]),
+            Keys.F.code: KC.MACRO(self.macros["pair_brace"]),
+            Keys.R.code: KC.MACRO(self.macros["pair_paren"]),
+            Keys.C.code: KC.MACRO(self.macros["pair_angle"]),
+            Keys.COMMA.code: KC.MACRO(self.macros["pair_squote"]),
+            Keys.PERIOD.code: KC.MACRO(self.macros["pair_dquote"]),
             Keys.X.code: KC.PIPE,
             Keys.Z.code: KC.TILDE,
             Keys.G.code: KC.GRV,
-            Keys.H.code: KC.UNDS,
-            Keys.J.code: KC.MINS,
-            Keys.K.code: KC.PLUS,
-            Keys.L.code: KC.EQUAL,
+            # Add vim navigation on HJKL (accessible with Green/Shift)
+            # Original symbols moved to nearby keys
+            Keys.Y.code: KC.UNDS,  # Was on H
+            Keys.H.code: KC.LEFT,
+            Keys.J.code: KC.DOWN,
+            Keys.K.code: KC.UP,
+            Keys.L.code: KC.RIGHT,
+            Keys.N.code: KC.MINS,  # Was on J
             Keys.V.code: KC.BSLS,
             Keys.B.code: KC.SLASH,
             Keys.E.code: KC.ESC,
             Keys.T.code: KC.TAB,
             Keys.I.code: KC.PGUP,
-            Keys.M.code: KC.PGDN,
             Keys.U.code: KC.HOME,
             Keys.O.code: KC.END,
+            Keys.P.code: KC.PGDN,  # Moved from M
         }
 
         # Orange: function keys and navigation
@@ -72,6 +83,13 @@ class LayerManager:
         orange[Keys.K.code] = KC.DOWN
         orange[Keys.J.code] = KC.LEFT
         orange[Keys.L.code] = KC.RIGHT
+        # Add PLUS and EQUAL that were displaced from green layer
+        orange[Keys.M.code] = KC.PLUS
+        orange[Keys.N.code] = KC.EQUAL
+        # Add modifier keys for convenience
+        orange[Keys.Z.code] = KC.LCTL  # Ctrl on Z
+        orange[Keys.X.code] = KC.LALT  # Alt on X  
+        orange[Keys.C.code] = KC.LGUI  # Command/Win on C
 
         # People: dev shortcuts and navigation
         if HOST_OS.lower() in ("linux", "mac"):
@@ -80,6 +98,14 @@ class LayerManager:
         else:
             word_left = KC.LCTL(KC.LEFT)
             word_right = KC.LCTL(KC.RIGHT)
+
+        # Select appropriate GUI/Alt key based on OS
+        if HOST_OS.lower() == "mac":
+            gui_key = KC.LGUI  # Command key on macOS
+            alt_key = KC.LALT  # Option key on macOS
+        else:
+            gui_key = KC.LGUI  # Windows key on Windows/Linux
+            alt_key = KC.LALT  # Alt key
 
         people = {
             # Arrows on IJKL
@@ -93,17 +119,25 @@ class LayerManager:
             # Word navigation
             Keys.H.code: word_left,
             Keys.U.code: word_right,
-            # Macros
-            Keys.T.code: self.macros["tmux_prefix"],
-            Keys.C.code: self.macros["clear"],
-            Keys.G.code: self.macros["git_status"],
-            Keys.S.code: self.macros["save"],
-            Keys.B.code: self.macros["build"],
-            # Clipboard helpers
-            Keys.X.code: KC.LCTL(KC.X),
-            Keys.V.code: KC.LCTL(KC.V),
+            # Modifier keys
+            Keys.A.code: alt_key,   # Alt/Option on A
+            Keys.W.code: gui_key,   # Command/Win on W
+            # Macros - wrap with KC.MACRO()
+            Keys.T.code: KC.MACRO(self.macros["tmux_prefix"]),
+            Keys.K.code: KC.MACRO(self.macros["clear"]),  # Changed from C to K
+            Keys.G.code: KC.MACRO(self.macros["git_status"]),
+            Keys.S.code: KC.MACRO(self.macros["save"]),
+            Keys.B.code: KC.MACRO(self.macros["build"]),
+            # Clipboard operations (use OS-appropriate modifier)
+            Keys.C.code: KC.LCTL(KC.C) if HOST_OS.lower() != "mac" else KC.LGUI(KC.C),  # Copy
+            Keys.X.code: KC.LCTL(KC.X) if HOST_OS.lower() != "mac" else KC.LGUI(KC.X),  # Cut
+            Keys.V.code: KC.LCTL(KC.V) if HOST_OS.lower() != "mac" else KC.LGUI(KC.V),  # Paste
+            Keys.Z.code: KC.LCTL(KC.Z) if HOST_OS.lower() != "mac" else KC.LGUI(KC.Z),  # Undo
+            Keys.Y.code: KC.LCTL(KC.Y) if HOST_OS.lower() != "mac" else KC.LGUI(KC.LSFT(KC.Z)),  # Redo
             # Quick close
             Keys.Q.code: KC.LALT(KC.F4),
+            # Additional vim-friendly ESC option
+            Keys.E.code: KC.ESC,
         }
 
         self.layers = {
@@ -112,8 +146,13 @@ class LayerManager:
             "orange": orange,
             "people": people,
         }
+        self._layers_built = True
 
     def select(self, modifiers):
+        # Build layers if not already built (deferred until KC.MACRO exists)
+        if not self._layers_built:
+            self._build_layers()
+            
         if modifiers.people_toggle:
             return self.layers["people"]
         if modifiers.orange_active:

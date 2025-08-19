@@ -22,5 +22,5 @@ def get_all_macros():
     for name, s in ensure.items():
         if name not in out:
             # Insert pair and move caret left
-            out[name] = KC.MACRO(s, Tap(KC.LEFT))
+            out[name] = [s, Tap(KC.LEFT)]
     return out

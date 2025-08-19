@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) and other AI assistants when working with this repository.
 
 ## Project Overview
 
-KMK-based Xbox 360 Chatpad driver for Adafruit KB2040, creating a USB keyboard optimized for terminal software development. The device interfaces with a Raspberry Pi Zero 2W as part of a portable "cyberdeck" setup.
+KMK-based Xbox 360 Chatpad driver for Adafruit KB2040, creating a USB keyboard optimized for terminal and software development. The Chatpad communicates via UART protocol, which we decode and translate into USB HID events using CircuitPython and KMK firmware.
 
 ## Architecture
 
@@ -35,91 +35,168 @@ def rising(self, mask):
 ```
 
 **Dual-role Space**: Time-based promotion with chord detection
+- Tap (<300ms) = Space
+- Hold (>300ms) = Ctrl
+- Space + key = Immediate Ctrl chord
+
+**Deferred Layer Building**: Layers built after KMK modules loaded to ensure KC.MACRO exists
 ```python
-# Space becomes Ctrl if held > SPACE_TAP_TIMEOUT or chorded with another key
+# In layers.py - build on first access
+def select(self, modifiers):
+    if not self._layers_built:
+        self._build_layers()
 ```
+
+## Hardware Setup
+
+- **Microcontroller**: Adafruit KB2040 (RP2040-based)
+- **Chatpad**: Xbox 360 Chatpad
+- **Connections**:
+  - Chatpad TX → KB2040 RX (D1/board.RX)
+  - Chatpad RX → KB2040 TX (D0/board.TX)
+  - Power: 3.3V and GND
+- **Dummy Matrix**: D4/D5 (KMK requires matrix pins even for UART input)
+
+## Layer System
+
+### Base Layer
+Standard QWERTY layout with numbers and basic punctuation
+
+### Green Layer (Shift/Symbols)
+- **Vim Navigation**: H/J/K/L = Left/Down/Up/Right
+- **Symbols**: Relocated from HJKL to nearby keys
+- **Pair Insertion**: Auto-insert bracket pairs with cursor positioning
+
+### Orange Layer (Function/System)
+- F1-F12 keys
+- System keys (PrintScreen, ScrollLock, Pause)
+- Navigation arrows on IJKL
+- Plus/Equal on M/N
+
+### People Layer (Developer)
+- **Git macros**: status, add, commit, push
+- **Navigation**: IJKL arrows, word navigation
+- **Terminal**: clear, tmux prefix
+- **Editor**: save (Ctrl+S), build (Ctrl+Shift+B)
+- **Toggle with People key**
 
 ## Development Workflow
 
-### KMK Dependency
-KMK firmware is included as a git submodule in `lib/kmk_firmware_repo/` with a symlink at `lib/kmk/`.
+### Setup
 ```bash
-# Initialize if needed
+# Clone with submodules
+git clone --recursive <repo>
+
+# Or init submodules after clone
 git submodule init && git submodule update
 ```
 
 ### Deploy to Device
 ```bash
-# Use the deployment script (auto-detects CIRCUITPY mount)
+# Auto-deploy to CIRCUITPY volume
 ./deploy.sh
 
-# Or manually specify mount point
-./deploy.sh /Volumes/CIRCUITPY
+# Force reinstall KMK
+./deploy.sh --force-kmk
 ```
 
-### Debug via REPL
+### Debug & Monitor
 ```bash
-# Connect at 115200 baud
+# Monitor serial output
 screen /dev/tty.usbmodem* 115200
-# Or use Thonny, Mu, or other CircuitPython IDE
 
-# Test modules directly:
->>> from lib.chatpad.protocol import FrameParser
->>> parser = FrameParser()
->>> parser.add_data(b'\xB4\xC5\x00\x27\x00\x00\x00\x7B')
+# Debug mode toggle: People + Orange while running
+# Or set in code.py:
+controller = ChatpadController(kb, simple_space=False, debug=True)
 ```
 
-### Monitor Chatpad Protocol
-```python
-# Enable debug mode: People layer + Orange key
-# Or set in code:
-self.debug = True  # in ChatpadKMKModule
-```
+## Configuration
 
-## Critical Protocol Details
+### code.py Options
+- `simple_space`: `False` for dual-role, `True` for regular spacebar
+- `debug`: `True` shows key press/release messages
 
-### Chatpad Messages
-- **Init**: `[0x87, 0x02, 0x8C, 0x1F, 0xCC]` - sent once on startup
-- **Keep-alive**: `[0x87, 0x02, 0x8C, 0x1B, 0xD0]` - every 1.0s or Chatpad sleeps
-- **Data frame**: `[0xB4, 0xC5, mods, key0, key1, 0, 0, checksum]`
-- **Checksum**: `(-sum(bytes[0:7])) & 0xFF`
-
-### Raw Keycode Ranges
-- Numbers: `0x11-0x17, 0x65-0x67`
-- Letters: `0x21-0x27, 0x31-0x37, 0x41-0x46, 0x52, 0x64-0x77`
-- Special: `0x51` (Right), `0x53` (Period), `0x54` (Space), `0x55` (Left), `0x62` (Comma), `0x63` (Enter), `0x71` (Backspace)
-
-## Configuration Points
-
-### config.py
-- `HOST_OS`: Controls word navigation shortcuts (Alt vs Ctrl arrows)
-- `SPACE_TAP_TIMEOUT`: Threshold for Space→Ctrl promotion (default 175ms)
+### config.py Settings
+- `HOST_OS`: "linux", "mac", or "windows" (affects shortcuts)
+- `SPACE_TAP_TIMEOUT`: Dual-role timeout (default 0.3s)
+- `KEEP_ALIVE_INTERVAL`: UART keep-alive (default 1.0s)
 - `NEOPIXEL_BRIGHTNESS`: LED intensity (0.0-1.0)
 
-### Adding Macros
-1. Create function in `lib/macros/development.py` or `terminal.py`
-2. Return `KC.MACRO(...)` or sequence
-3. Map in `lib/chatpad/layers.py` PEOPLE_MAP
+## Protocol Details
 
-### Modifying Layers
-Edit dictionaries in `lib/chatpad/layers.py`:
-- `BASE_MAP`: Unmodified keys
-- `GREEN_MAP`: Coding symbols layer
-- `ORANGE_MAP`: F-keys and system
-- `PEOPLE_MAP`: Developer shortcuts
+### Chatpad Messages
+- **Init**: `0x87 0x02 0x8C 0x1F 0xCC`
+- **Keep-alive**: `0x87 0x02 0x8C 0x1B 0xD0`
+- **Data frame**: `0xB4 0xC5 [reserved] [mods] [key0] [key1] [reserved] [checksum]`
+- **Status frame**: Starts with `0xA5`
 
-## Memory Optimization
-
-If hitting memory limits:
-```bash
-# Precompile to .mpy
-mpy-cross -O2 lib/chatpad/*.py
-# Remove unused KMK modules from lib/kmk/
+### Checksum Calculation
+```python
+checksum = (-sum(frame[:7])) & 0xFF
 ```
 
-## Hardware Connections
+### Raw Key Codes
+See `config.py` for complete mapping in `Keys` class
 
-- Chatpad TX → KB2040 RX (board.RX)
-- Chatpad RX → KB2040 TX (board.TX)
-- Chatpad requires 3.3V power
-- NeoPixel on pin 17 (built-in on KB2040)
+## Adding Features
+
+### New Macros
+1. Edit files in `lib/macros/`:
+   - `development.py`: Coding shortcuts
+   - `terminal.py`: Terminal commands
+   - `vim.py`: Editor commands
+2. Return dictionary: `{"name": action_sequence}`
+3. Actions: strings or lists of `[Press(), Tap(), Release()]`
+
+### Layer Modifications
+Edit `lib/chatpad/layers.py`:
+1. Modify layer dictionaries in `_build_layers()`
+2. Use `KC.MACRO()` for macro sequences
+3. Direct KC codes for single keys
+
+### Custom Key Behavior
+1. Create custom Key class in `lib/chatpad/keyboard.py`
+2. Override `on_press()` and `on_release()`
+3. Add to appropriate layer
+
+## Troubleshooting
+
+### Common Issues
+1. **No output**: Check TX/RX crossed correctly
+2. **KC.MACRO not found**: Macros module must load before layers build
+3. **Space issues**: Adjust `SPACE_TAP_TIMEOUT`
+4. **Read-only filesystem**: Eject and remount or reset device
+5. **Memory errors**: Remove unused KMK modules or precompile to .mpy
+
+### Debug Techniques
+- Enable debug output in code.py
+- Monitor serial: `screen /dev/tty.usbmodem* 115200`
+- Check UART data with test scripts (now removed, see git history)
+- Toggle debug at runtime: People + Orange
+
+## Project Structure
+```
+kmk-kb2040-chatpad/
+├── code.py                # Entry point (debug enabled)
+├── config.py              # Configuration and key mappings
+├── boot.py                # CircuitPython boot config
+├── deploy.sh              # Deployment script
+├── lib/
+│   ├── chatpad/          # Core driver module
+│   │   ├── __init__.py   # Public API
+│   │   ├── keyboard.py   # KMK module & controller
+│   │   ├── layers.py     # Layer definitions
+│   │   ├── protocol.py   # UART protocol handler
+│   │   ├── state.py      # State machines
+│   │   └── led.py        # Status LED (optional)
+│   ├── macros/           # Macro definitions
+│   └── kmk/              # KMK firmware (git submodule)
+└── docs/
+    └── kmk-reference/    # KMK documentation
+```
+
+## Resources
+- [KMK Documentation](docs/kmk-reference/)
+- [CircuitPython](https://circuitpython.org/)
+- [Adafruit KB2040](https://www.adafruit.com/product/5302)
+- [Xbox 360 Chatpad Protocol](https://github.com/xbox360bb/Xbox360-Chatpad-Driver)

@@ -10,9 +10,52 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}KMK KB2040 Chatpad Deployment Script${NC}"
 echo "====================================="
 
-# Check if CIRCUITPY mount point is provided or try to find it
-if [ -z "$1" ]; then
-    # Try to auto-detect CIRCUITPY mount point
+# Parse arguments
+MOUNT_POINT=""
+FORCE_KMK=false
+DEBUG_MODE=false
+
+# Show usage
+show_usage() {
+    echo "Usage: $0 [mount_point] [options]"
+    echo "Options:"
+    echo "  --force-kmk    Force reinstall KMK library even if present"
+    echo "  --debug        Include debug and test files"
+    echo ""
+    echo "Examples:"
+    echo "  $0                     # Auto-detect mount point"
+    echo "  $0 /Volumes/CIRCUITPY  # Specify mount point"
+    echo "  $0 --force-kmk         # Force reinstall KMK"
+    echo "  $0 --debug --force-kmk # Debug mode with forced KMK"
+}
+
+# Parse command line arguments
+for arg in "$@"; do
+    case $arg in
+        --force-kmk)
+            FORCE_KMK=true
+            ;;
+        --debug)
+            DEBUG_MODE=true
+            ;;
+        --help|-h)
+            show_usage
+            exit 0
+            ;;
+        *)
+            if [ -z "$MOUNT_POINT" ] && [ -d "$arg" ]; then
+                MOUNT_POINT="$arg"
+            elif [ -z "$MOUNT_POINT" ] && [[ ! "$arg" == --* ]]; then
+                echo -e "${RED}Error: Invalid mount point: $arg${NC}"
+                show_usage
+                exit 1
+            fi
+            ;;
+    esac
+done
+
+# Auto-detect mount point if not provided
+if [ -z "$MOUNT_POINT" ]; then
     if [ -d "/Volumes/CIRCUITPY" ]; then
         MOUNT_POINT="/Volumes/CIRCUITPY"
     elif [ -d "/media/$USER/CIRCUITPY" ]; then
@@ -21,12 +64,9 @@ if [ -z "$1" ]; then
         MOUNT_POINT="/mnt/CIRCUITPY"
     else
         echo -e "${RED}Error: CIRCUITPY mount point not found${NC}"
-        echo "Usage: $0 [mount_point]"
-        echo "Example: $0 /Volumes/CIRCUITPY"
+        show_usage
         exit 1
     fi
-else
-    MOUNT_POINT="$1"
 fi
 
 # Verify mount point exists
@@ -37,9 +77,23 @@ fi
 
 echo -e "${YELLOW}Deploying to: $MOUNT_POINT${NC}"
 
+# Show options
+if [ "$FORCE_KMK" = true ]; then
+    echo -e "${YELLOW}Options: Force KMK reinstall${NC}"
+fi
+if [ "$DEBUG_MODE" = true ]; then
+    echo -e "${YELLOW}Options: Debug mode enabled${NC}"
+fi
+
 # Deploy main files
 echo "Copying main files..."
 cp -v boot.py code.py config.py "$MOUNT_POINT/"
+
+# Copy test/debug files if requested
+if [ "$DEBUG_MODE" = true ]; then
+    echo -e "${YELLOW}Copying debug files...${NC}"
+    cp -v code_debug.py test_*.py verify_kmk.py safe_mode.py "$MOUNT_POINT/" 2>/dev/null || true
+fi
 
 # Deploy lib directory structure
 echo "Copying lib/chatpad..."
@@ -50,10 +104,28 @@ echo "Copying lib/macros..."
 mkdir -p "$MOUNT_POINT/lib/macros"
 cp -v lib/macros/*.py "$MOUNT_POINT/lib/macros/"
 
-# Check if KMK is already installed
-if [ ! -d "$MOUNT_POINT/lib/kmk" ]; then
+# Determine if KMK needs to be installed
+INSTALL_KMK=false
+
+if [ "$FORCE_KMK" = true ]; then
+    echo -e "${YELLOW}Force reinstall of KMK requested${NC}"
+    INSTALL_KMK=true
+elif [ ! -d "$MOUNT_POINT/lib/kmk" ]; then
     echo -e "${YELLOW}KMK not found on device. Installing...${NC}"
-    
+    INSTALL_KMK=true
+else
+    # Check if critical subdirectories exist
+    if [ ! -d "$MOUNT_POINT/lib/kmk/handlers" ] || [ ! -d "$MOUNT_POINT/lib/kmk/modules" ] || [ ! -f "$MOUNT_POINT/lib/kmk/scheduler.py" ]; then
+        echo -e "${YELLOW}KMK installation incomplete. Reinstalling...${NC}"
+        echo "  Missing components detected"
+        INSTALL_KMK=true
+    else
+        echo -e "${GREEN}KMK library already present and complete${NC}"
+        echo "  Use --force-kmk to reinstall anyway"
+    fi
+fi
+
+if [ "$INSTALL_KMK" = true ]; then
     # Check if submodule is initialized
     if [ ! -d "lib/kmk_firmware_repo/kmk" ]; then
         echo "Initializing git submodule..."
@@ -61,12 +133,22 @@ if [ ! -d "$MOUNT_POINT/lib/kmk" ]; then
         git submodule update
     fi
     
-    # Copy KMK library
-    echo "Copying KMK library (this may take a moment)..."
+    # Remove incomplete installation if exists
+    if [ -d "$MOUNT_POINT/lib/kmk" ]; then
+        echo "Removing incomplete KMK installation..."
+        rm -rf "$MOUNT_POINT/lib/kmk"
+    fi
+    
+    # Copy entire KMK library with all subdirectories
+    echo "Copying complete KMK library (this may take a moment)..."
     cp -r lib/kmk_firmware_repo/kmk "$MOUNT_POINT/lib/"
-    echo -e "${GREEN}KMK library installed${NC}"
-else
-    echo -e "${GREEN}KMK library already present${NC}"
+    
+    # Verify critical directories
+    if [ -d "$MOUNT_POINT/lib/kmk/handlers" ] && [ -d "$MOUNT_POINT/lib/kmk/modules" ]; then
+        echo -e "${GREEN}✓ KMK library installed successfully${NC}"
+    else
+        echo -e "${RED}⚠ KMK installation may be incomplete${NC}"
+    fi
 fi
 
 echo ""
