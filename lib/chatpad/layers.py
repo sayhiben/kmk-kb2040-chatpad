@@ -37,59 +37,76 @@ class LayerManager:
         base[Keys.LEFT.code] = KC.LEFT
         base[Keys.RIGHT.code] = KC.RIGHT
 
-        # Green: coding symbols and helpers (pair insertion via macros)
-        # Pair‑insertion macros are in macros dict: pair_paren, pair_brace, pair_bracket, pair_angle, pair_squote, pair_dquote
+        # Green: symbols layer (hold green button + key)
         green = {
-            Keys.D.code: KC.MACRO(self.macros["pair_bracket"]),
-            Keys.F.code: KC.MACRO(self.macros["pair_brace"]),
-            Keys.R.code: KC.MACRO(self.macros["pair_paren"]),
-            Keys.C.code: KC.MACRO(self.macros["pair_angle"]),
-            Keys.COMMA.code: KC.MACRO(self.macros["pair_squote"]),
-            Keys.PERIOD.code: KC.MACRO(self.macros["pair_dquote"]),
-            Keys.X.code: KC.PIPE,
-            Keys.Z.code: KC.TILDE,
-            Keys.G.code: KC.GRV,
-            # Add vim navigation on HJKL (accessible with Green/Shift)
-            # Original symbols moved to nearby keys
-            Keys.Y.code: KC.UNDS,  # Was on H
-            Keys.H.code: KC.LEFT,
-            Keys.J.code: KC.DOWN,
-            Keys.K.code: KC.UP,
-            Keys.L.code: KC.RIGHT,
-            Keys.N.code: KC.MINS,  # Was on J
-            Keys.V.code: KC.BSLS,
-            Keys.B.code: KC.SLASH,
-            Keys.E.code: KC.ESC,
-            Keys.T.code: KC.TAB,
-            Keys.I.code: KC.PGUP,
-            Keys.U.code: KC.HOME,
-            Keys.O.code: KC.END,
-            Keys.P.code: KC.PGDN,  # Moved from M
+            Keys.Q.code: KC.EXCLAIM,      # Q = !
+            Keys.W.code: KC.AT,           # W = @
+            Keys.E.code: KC.DOLLAR,       # E = $
+            Keys.R.code: KC.HASH,         # R = #
+            Keys.T.code: KC.PERCENT,      # T = %
+            Keys.Y.code: KC.CIRCUMFLEX,   # Y = ^
+            Keys.U.code: KC.AMPERSAND,    # U = &
+            Keys.I.code: KC.ASTERISK,     # I = *
+            Keys.O.code: KC.LPRN,         # O = (
+            Keys.P.code: KC.RPRN,         # P = )
+            Keys.A.code: KC.TILDE,        # A = ~
+            # S = None
+            Keys.D.code: KC.LCBR,         # D = {
+            Keys.F.code: KC.RCBR,         # F = }
+            # G = None
+            Keys.H.code: KC.SLASH,        # H = /
+            Keys.J.code: KC.QUOTE,        # J = '
+            Keys.K.code: KC.LBRC,         # K = [
+            Keys.L.code: KC.RBRC,         # L = ]
+            Keys.COMMA.code: KC.COLON,    # , = :
+            Keys.Z.code: KC.GRV,          # Z = `
+            # X = None
+            # C = None
+            Keys.V.code: KC.MINUS,        # V = -
+            Keys.B.code: KC.PIPE,         # B = |
+            Keys.N.code: KC.LABK,         # N = <
+            Keys.M.code: KC.RABK,         # M = >
+            Keys.PERIOD.code: KC.QUESTION, # . = ?
         }
 
-        # Orange: function keys and navigation
-        orange = {}
-        fnums = [Keys.N1, Keys.N2, Keys.N3, Keys.N4, Keys.N5, Keys.N6, Keys.N7, Keys.N8, Keys.N9, Keys.N0]
-        for idx, key in enumerate(fnums, 1):
-            orange[key.code] = getattr(KC, "F{}".format(idx))
-        orange[Keys.P.code] = KC.F11
-        orange[Keys.O.code] = KC.F12
-        orange[Keys.Q.code] = KC.PSCR
-        orange[Keys.W.code] = KC.SLCK
-        orange[Keys.E.code] = KC.PAUS
-        orange[Keys.A.code] = KC.INS
-        orange[Keys.S.code] = KC.DEL
-        orange[Keys.I.code] = KC.UP
-        orange[Keys.K.code] = KC.DOWN
-        orange[Keys.J.code] = KC.LEFT
-        orange[Keys.L.code] = KC.RIGHT
-        # Add PLUS and EQUAL that were displaced from green layer
-        orange[Keys.M.code] = KC.PLUS
-        orange[Keys.N.code] = KC.EQUAL
-        # Add modifier keys for convenience
-        orange[Keys.Z.code] = KC.LCTL  # Ctrl on Z
-        orange[Keys.X.code] = KC.LALT  # Alt on X  
-        orange[Keys.C.code] = KC.LGUI  # Command/Win on C
+        # Orange: secondary symbols and special keys (hold orange button + key)
+        orange = {
+            # Most keys are None except for these:
+            Keys.P.code: KC.EQUAL,         # P = =
+            Keys.H.code: KC.BSLASH,        # H = \
+            Keys.J.code: KC.DQUO,          # J = "
+            Keys.COMMA.code: KC.SCOLON,    # , = ;
+            Keys.V.code: KC.UNDS,          # V = _
+            Keys.B.code: KC.PLUS,          # B = +
+            # Keep function keys on number row for convenience
+            Keys.N1.code: KC.F1,
+            Keys.N2.code: KC.F2,
+            Keys.N3.code: KC.F3,
+            Keys.N4.code: KC.F4,
+            Keys.N5.code: KC.F5,
+            Keys.N6.code: KC.F6,
+            Keys.N7.code: KC.F7,
+            Keys.N8.code: KC.F8,
+            Keys.N9.code: KC.F9,
+            Keys.N0.code: KC.F10,
+            # Additional function keys on unused keys (F/G unused in spec)
+            Keys.F.code: KC.F11,
+            Keys.G.code: KC.F12,
+            # Navigation keys (arrows on dedicated arrow keys)
+            Keys.LEFT.code: KC.LEFT,
+            Keys.RIGHT.code: KC.RIGHT,
+            # Additional arrow cluster on WASD for convenience
+            Keys.W.code: KC.UP,
+            Keys.A.code: KC.LEFT,
+            Keys.S.code: KC.DOWN,
+            Keys.D.code: KC.RIGHT,
+            # Tab and untab
+            Keys.T.code: KC.TAB,
+            Keys.Y.code: KC.LSFT(KC.TAB),  # Shift+Tab for untab
+            # ESC easily accessible
+            Keys.Q.code: KC.ESC,
+            # Caps lock toggle is now on Orange+Shift (handled in keyboard.py)
+        }
 
         # People: dev shortcuts and navigation
         if HOST_OS.lower() in ("linux", "mac"):

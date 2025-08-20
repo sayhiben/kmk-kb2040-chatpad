@@ -6,8 +6,10 @@ A CircuitPython/KMK driver that turns an Xbox 360 Chatpad into a powerful USB ke
 
 - **Full QWERTY keyboard** with numbers and punctuation
 - **Multiple layers** for symbols, function keys, and developer shortcuts
-- **Vim-style navigation** (HJKL arrows in Green layer)
+- **Double-tap Shift for ESC** - Quick access for vim users
 - **Dual-role spacebar** (tap for space, hold for Ctrl)
+- **Complete symbol coverage** across Green and Orange layers
+- **WASD navigation** in Orange layer, plus dedicated arrow keys
 - **Developer macros** for git, terminal, and editor commands
 - **Customizable** layers and macros via Python
 - **Debug mode** with serial output for troubleshooting
@@ -71,67 +73,71 @@ Standard QWERTY layout:
   - `Shift` = Shift (combine with Orange for sticky shift)
 
 #### 🟢 Green Layer (Hold Green Key)
-Programming symbols and vim navigation:
+Programming symbols:
 
 | Key | Output | Description |
 |-----|--------|-------------|
-| **Pair Insertion** (auto-inserts matching pair with cursor between) |
-| D | `[]` | Square brackets |
-| F | `{}` | Curly braces |
-| R | `()` | Parentheses |
-| C | `<>` | Angle brackets |
-| , | `''` | Single quotes |
-| . | `""` | Double quotes |
-| **Symbols** |
-| X | `\|` | Pipe |
-| Z | `~` | Tilde |
-| G | `` ` `` | Backtick/grave |
-| Y | `_` | Underscore |
-| N | `-` | Minus/hyphen |
-| V | `\` | Backslash |
-| B | `/` | Forward slash |
-| **Vim Navigation** |
-| H | ← | Left arrow |
-| J | ↓ | Down arrow |
-| K | ↑ | Up arrow |
-| L | → | Right arrow |
-| **Page Navigation** |
-| I | Page Up | |
-| U | Home | |
-| O | End | |
-| P | Page Down | |
-| **Other** |
-| E | Escape | |
-| T | Tab | |
+| **Top Row** |
+| Q | `!` | Exclamation |
+| W | `@` | At sign |
+| E | `$` | Dollar |
+| R | `#` | Hash/Pound |
+| T | `%` | Percent |
+| Y | `^` | Caret |
+| U | `&` | Ampersand |
+| I | `*` | Asterisk |
+| O | `(` | Left parenthesis |
+| P | `)` | Right parenthesis |
+| **Home Row** |
+| A | `~` | Tilde |
+| S | - | None |
+| D | `{` | Left brace |
+| F | `}` | Right brace |
+| G | - | None |
+| H | `/` | Forward slash |
+| J | `'` | Single quote |
+| K | `[` | Left bracket |
+| L | `]` | Right bracket |
+| **Bottom Row** |
+| Z | `` ` `` | Backtick |
+| X | - | None |
+| C | - | None |
+| V | `-` | Minus/hyphen |
+| B | `\|` | Pipe |
+| N | `<` | Less than |
+| M | `>` | Greater than |
+| **Punctuation** |
+| , | `:` | Colon |
+| . | `?` | Question mark |
 
 #### 🟠 Orange Layer (Hold Orange Key)
-Function keys, system controls, and modifiers:
+Secondary symbols and special keys:
 
 | Key | Output | Description |
 |-----|--------|-------------|
 | **Function Keys** |
 | 1-9 | F1-F9 | Function keys |
 | 0 | F10 | |
-| P | F11 | |
-| O | F12 | |
-| **System Keys** |
-| Q | Print Screen | Screenshot |
-| W | Scroll Lock | |
-| E | Pause | |
-| A | Insert | |
-| S | Delete | |
-| **Navigation** |
-| I | ↑ | Up arrow |
-| J | ← | Left arrow |
-| K | ↓ | Down arrow |
-| L | → | Right arrow |
-| **Math Symbols** |
-| M | + | Plus |
-| N | = | Equal |
-| **Modifier Keys** |
-| Z | Ctrl | Control key |
-| X | Alt/Option | Alt (Windows/Linux) or Option (macOS) |
-| C | Cmd/Win | Command (macOS) or Windows key |
+| F | F11 | |
+| G | F12 | |
+| **Symbols** |
+| P | `=` | Equals |
+| H | `\` | Backslash |
+| J | `"` | Double quote |
+| , | `;` | Semicolon |
+| V | `_` | Underscore |
+| B | `+` | Plus |
+| **Navigation (WASD)** |
+| W | ↑ | Up arrow |
+| A | ← | Left arrow |
+| S | ↓ | Down arrow |
+| D | → | Right arrow |
+| **Special Keys** |
+| Q | ESC | Escape |
+| T | Tab | Tab |
+| Y | Shift+Tab | Untab/reverse tab |
+| **Modifier Combos** |
+| Orange+Shift | Caps Lock | Toggle caps lock |
 
 #### 👥 People Layer (Toggle with People Key)
 Developer tools, macros, and extended navigation:
@@ -175,6 +181,11 @@ Developer tools, macros, and extended navigation:
 - **Hold** (>300ms): Acts as Ctrl modifier
 - **Space + another key quickly**: Immediate Ctrl chord (e.g., Space+C = Ctrl+C)
 
+**Shift Double-Tap** (double-tap=ESC):
+- **Double-tap Shift** (within 300ms): Sends ESC key
+- **Single tap/hold**: Normal Shift modifier
+- Useful for vim users who need quick ESC access
+
 **LEFT Arrow Key** (tap=Left Arrow, hold=Alt/Option):
 - **Quick tap** (<200ms): Left arrow
 - **Hold** (>200ms): Alt (Windows/Linux) or Option (macOS)
@@ -198,12 +209,14 @@ controller = ChatpadController(kb, simple_space=True, debug=True)
 # Note: LEFT/RIGHT dual-role is always active for better ergonomics
 ```
 
-#### Sticky Shift
-**Activation**: Hold Shift + Orange together
-- Toggles sticky shift mode
-- When active, all keys remain shifted until toggled off
-- Useful for typing long sequences in CAPS
-- Toggle off by pressing Shift + Orange again
+#### Caps Lock & Sticky Shift
+**Caps Lock**: Hold Orange + tap Shift
+- Toggles caps lock on/off
+- Standard caps lock behavior
+
+**Sticky Shift** (deprecated - use Caps Lock instead):
+- The old Shift+Orange sticky shift has been replaced with standard Caps Lock
+- Use Orange+Shift for caps lock toggle
 
 #### Layer Indicators & NeoPixel
 - **People Layer**: Toggle mode - press People once to activate, press again to deactivate

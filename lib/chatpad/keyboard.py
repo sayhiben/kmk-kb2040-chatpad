@@ -126,10 +126,30 @@ class ChatpadKMKModule(Module):
         prev_mods = self.mods.current
         self.mods.update(rep["modifiers"])
 
+        # Check for shift double-tap → ESC
+        if self.mods.check_shift_double_tap():
+            # Send ESC on double-tap
+            self.kb.pre_process_key(KC.ESC, True, None)
+            self.kb.pre_process_key(KC.ESC, False, None)
+            if self.debug:
+                print("SHIFT double-tap → ESC")
+            # Don't process shift normally for this tap
+            return
+
         # Debug toggle: press Orange while People is active
         if self.mods.people_toggle and self.mods.rising(Modifiers.ORANGE):
             self.debug = not self.debug
             print("Debug", "ON" if self.debug else "OFF")
+        
+        # Caps Lock toggle: press Shift while Orange is held
+        if (self.mods.current & Modifiers.ORANGE) and self.mods.rising(Modifiers.SHIFT):
+            # Send Caps Lock key press and release
+            self.kb.pre_process_key(KC.CAPS, True, None)
+            self.kb.pre_process_key(KC.CAPS, False, None)
+            if self.debug:
+                print("Orange+Shift → CAPS LOCK toggle")
+            # Don't process shift normally for this event
+            return
 
         # Host Shift handling
         if self.mods.shift_active and not self.shift_down:

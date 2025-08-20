@@ -8,6 +8,9 @@ class ModifierState:
         self.previous = 0
         self.shift_sticky = False
         self.people_toggle = False
+        # Double-tap detection for Shift → ESC
+        self.shift_last_release = 0.0
+        self.shift_double_tap_window = 0.3  # 300ms window for double-tap
 
     def update(self, new_mods):
         self.previous = self.current
@@ -23,6 +26,23 @@ class ModifierState:
 
     def rising(self, mask):
         return (self.current & mask) and not (self.previous & mask)
+    
+    def falling(self, mask):
+        return not (self.current & mask) and (self.previous & mask)
+    
+    def check_shift_double_tap(self):
+        """Check if shift was double-tapped. Returns True if ESC should be sent."""
+        if self.rising(Modifiers.SHIFT):
+            now = monotonic()
+            # Check if this is the second tap within the window
+            if now - self.shift_last_release < self.shift_double_tap_window:
+                # Double-tap detected!
+                self.shift_last_release = 0.0  # Reset to prevent triple-tap
+                return True
+        elif self.falling(Modifiers.SHIFT):
+            # Record when shift was released
+            self.shift_last_release = monotonic()
+        return False
 
     @property
     def shift_active(self):
